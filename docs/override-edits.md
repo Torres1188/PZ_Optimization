@@ -9027,7 +9027,7 @@ which are explicitly excluded, not waived. Three narrow early-load method hooks 
 tile-definition handoff and loading-fade behavior; 22 other method code arrays, including reporting, remain identical.
 Windows parity path handling is corrected so the audit actually compares methods. Against the unchanged allow list,
 9,514 unedited shipped methods match current stock fingerprints, with zero mismatches. Strict all-member resolution
-checks 23,266 concrete methods across 1,600 class files with zero errors and unchanged Config declarations/defaults.
+checks 23,268 concrete methods across 1,600 class files with zero errors and unchanged Config declarations/defaults.
 
 Official ZombieBuddy loads four Lua VM classes before ordinary mod preload. The separate early bootstrap therefore
 runs before its unmodified Java agent; a preload-only or incorrect-order attempt refuses before partial registration.

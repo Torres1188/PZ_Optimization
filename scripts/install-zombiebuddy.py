@@ -224,6 +224,28 @@ def strip_owned_aot(settings, root):
     return result, True
 
 
+def managed_gc_settings(settings):
+    """Recognize the original GcChoice markers without changing any GC flags."""
+    for args in argument_arrays(settings):
+        if any(value in args for value in ("-Dpzopt.gc=g1", "-Dpzopt.gc=g1,pause")) and "-XX:+UseG1GC" in args:
+            return True
+        if "-Dpzopt.jit=steady" in args and any(value in args for value in ("-XX:PerMethodTrapLimit=0", "-XX:PerBytecodeTrapLimit=0", "-XX:-UseTypeSpeculation")):
+            return True
+        for value in args:
+            if value.startswith("-Dpzopt.gctune="):
+                fields = value.split("=", 1)[1].split(",")
+                if fields[0] == "g1" and len(fields) == len(set(fields)) and set(fields[1:]) <= {"unlock", "ignore"} and "-XX:+UseG1GC" in args:
+                    return True
+            if value.startswith("-Dpzopt.heap="):
+                fields = value.split("=", 1)[1].split(",")
+                if len(fields) in (3, 6) and fields[2] in ("0", "1") and any(flag.startswith("-Xmx") for flag in args):
+                    old_heap = re.fullmatch(r"none|-Xmx[0-9]+[kKmMgG]?", fields[0])
+                    old_initial = re.fullmatch(r"none|-Xms[0-9]+[kKmMgG]?", fields[1])
+                    if old_heap and old_initial:
+                        return True
+    return False
+
+
 def checked_state(root, launcher, state):
     require(state.get("schema") == 1 and state.get("writer") == WRITER and state.get("launcher") == str(launcher), "Unrecognized launcher ownership")
     backup = Path(state["backup"])
@@ -263,11 +285,12 @@ def install(game_dir, mod_jar, zombiebuddy_jar):
     state = read_json(state_path) if state_path.exists() else None
     baseline = settings
     cleaned, managed_aot = strip_owned_aot(settings, root)
+    managed_runtime = managed_aot or managed_gc_settings(settings)
     upgrading = bool(state and state.get("status") == "installed")
     if state:
         checked_state(root, launcher, state)
         if upgrading:
-            require(digest(launcher) == state["installed.sha256"] or managed_aot, "Managed launcher was edited outside an owned AOT cycle; preserved unchanged")
+            require(digest(launcher) == state["installed.sha256"] or managed_runtime, "Managed launcher was edited outside an owned AOT/GC cycle; preserved unchanged")
             if digest(launcher) != state["installed.sha256"] or managed_aot or state.get("mod.sha256") != digest(mod) or state.get("modJar") != str(mod):
                 settings = remove_bootstrap(cleaned, root, state, only_added=False)
         else:
@@ -299,7 +322,9 @@ def install(game_dir, mod_jar, zombiebuddy_jar):
     args.insert(buddy_index, "-javaagent:" + mod.as_posix())
     updated["vmArgs"] = args
     updated["classpath"] = [game_entries[0]] + [entry for entry in cp if entry != game_entries[0] and classpath_path(root, entry) != mod] + [mod.as_posix()]
-    if updated == baseline and not managed_aot:
+    same_owned_setup = not state or (state.get("installed.sha256") == digest(launcher)
+        and state.get("mod.sha256") == digest(mod) and state.get("modJar") == str(mod))
+    if updated == baseline and not managed_aot and same_owned_setup:
         if state:
             require(state.get("writer") == WRITER and state.get("installed.sha256") == digest(launcher), "Existing launcher ownership record conflicts")
             require(digest(Path(state["backup"])) == state["original.sha256"], "Existing launcher backup differs")
@@ -320,7 +345,7 @@ def install(game_dir, mod_jar, zombiebuddy_jar):
         "original.sha256": hashlib.sha256(original).hexdigest(), "installed.sha256": hashlib.sha256(encoded).hexdigest(),
         "game.sha256": GAME_SHA, "modJar": str(mod), "mod.sha256": digest(mod), "zombiebuddyJar": str(buddy), "zombiebuddy.sha256": ZB_SHA,
         "agentAdded": not own_agents, "helperAdded": not any(classpath_path(root, entry) == mod for entry in cp),
-        "scopedUndo": managed_aot or bool(upgrading and state.get("scopedUndo"))}
+        "scopedUndo": managed_aot or bool(upgrading and (state.get("scopedUndo") or managed_runtime and digest(launcher) != state["installed.sha256"]))}
     if upgrading:
         record.update(backup=state["backup"], **{"original.sha256": state["original.sha256"]})
         record["upgradeBackup"] = str(backup)
@@ -350,10 +375,12 @@ def undo(game_dir):
         require(digest(launcher) == state.get("undo.sha256", state["original.sha256"]), "Launcher changed after undo")
         return {"ok": True, "operation": "undo", "changed": False, "fullRestartRequired": True}
     cleaned, managed_aot = strip_owned_aot(read_json(launcher), root)
+    require(not any(value.startswith("-XX:AOT") for args in argument_arrays(cleaned) for value in args), "Foreign AOT options are preserved; use their owner's removal process")
+    managed_runtime = managed_aot or managed_gc_settings(cleaned)
     unchanged = digest(launcher) == state["installed.sha256"]
-    require(state.get("status") == "installed" and (unchanged or managed_aot), "Launcher was edited after setup; preserved unchanged, restore its desired flags manually from the backup")
+    require(state.get("status") == "installed" and (unchanged or managed_runtime), "Launcher was edited after setup; preserved unchanged, restore its desired flags manually from the backup")
     assert_game_closed()
-    scoped = managed_aot or state.get("scopedUndo", False)
+    scoped = managed_aot or not unchanged and managed_runtime or state.get("scopedUndo", False)
     restored = encoded_json(remove_bootstrap(cleaned, root, state), current) if scoped else backup.read_bytes()
     try:
         atomic_write(launcher, restored)

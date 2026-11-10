@@ -246,6 +246,31 @@ class LauncherSetupTests(unittest.TestCase):
             self.install()
         self.assertEqual(self.launcher.read_bytes(), original)
 
+    def test_gc_only_runtime_update_undo_keeps_current_collector_heap_and_settings(self):
+        self.install()
+        settings = tool.read_json(self.launcher)
+        settings["vmArgs"] = ["-XX:+UseG1GC" if value == "-XX:+UseZGC" else "-Xmx8g" if value == "-Xmx6g" else value for value in settings["vmArgs"]]
+        settings["vmArgs"].append("-Dpzopt.gc=g1")
+        settings["userField"] = "keep-current"
+        self.launcher.write_text(json.dumps(settings))
+        self.assertTrue(tool.undo(self.root)["scopedAotCleanup"])
+        actual = tool.read_json(self.launcher)
+        self.assertIn("-XX:+UseG1GC", actual["vmArgs"])
+        self.assertIn("-Xmx8g", actual["vmArgs"])
+        self.assertEqual(actual["userField"], "keep-current")
+
+    def test_gc_only_runtime_update_can_upgrade_without_reverting_current_preferences(self):
+        self.install()
+        settings = tool.read_json(self.launcher)
+        settings["vmArgs"] = ["-XX:+UseG1GC" if value == "-XX:+UseZGC" else value for value in settings["vmArgs"]]
+        settings["vmArgs"].append("-Dpzopt.gc=g1")
+        self.launcher.write_text(json.dumps(settings))
+        archive(self.mod, {**self.entries, "pzopt/UpgradedHelper.class": b"new helper version"})
+        self.assertTrue(self.install()["changed"])
+        self.assertIn("-XX:+UseG1GC", tool.read_json(self.launcher)["vmArgs"])
+        self.assertTrue(tool.undo(self.root)["scopedAotCleanup"])
+        self.assertIn("-XX:+UseG1GC", tool.read_json(self.launcher)["vmArgs"])
+
 
 if __name__ == "__main__":
     unittest.main()

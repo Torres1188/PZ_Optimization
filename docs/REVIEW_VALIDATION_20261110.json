@@ -1,0 +1,101 @@
+{
+  "date": "2026-11-10",
+  "version": "42.22.2-review.1",
+  "namespace": "pzopt",
+  "upstreamBase": "2f75296ea7e64f2fa0c236eb80d87f4060173ffa",
+  "runtimeSourceCommit": "7efdd62",
+  "gameRevision": "3d39148846",
+  "gameJarSha256": "3c4a7c5f149d784758c6fb5f8fa85f3a21d572e38bc081400e89035f8120d287",
+  "zombieBuddyVersion": "2.3.4",
+  "zombieBuddyJarSha256": "eb79b9876332010733a8e0d7ce4fe0377846059a9e28859029e2a0fb449f6cf2",
+  "sourceFiles": 668,
+  "compiledClassFiles": 1600,
+  "sourceInventorySha256": "df13986d4fb7e8d3601bfd8f6cc93619b3cf2980ef7adab912f62f1d00b95750",
+  "classInventorySha256": "2741a5024c91ac2f7e1eee142b8a42c44fc29a820c8619f10067dd71c689fb60",
+  "strictMemberAudit": {
+    "passed": true,
+    "concreteMethods": 23268,
+    "errors": [],
+    "configDeclarationsAndDefaultsPreserved": true,
+    "npcNullGuardPreserved": true
+  },
+  "uneditedNativeMethodParity": {
+    "passed": true,
+    "methods": 9514,
+    "mismatches": 0,
+    "allowListChanged": false
+  },
+  "fullOfficialZombieBuddy": {
+    "passed": true,
+    "definitions": 1612,
+    "nativeSignerSets": 467,
+    "loaderErrors": [],
+    "additionalGameOrOptimizationInitializations": []
+  },
+  "helperArchivalBarrier": {
+    "schemasUnchanged": 1131,
+    "methodCodeArraysUnchanged": 11931
+  },
+  "nativeStartupHooks": {
+    "changedMethodCodeArrays": 3,
+    "otherMethodCodeArraysIdentical": 22,
+    "nativeIntegrityAndVersionReportingPreserved": true
+  },
+  "exactLoaderPolicy": {
+    "cases": 6,
+    "ordinaryAndRenamedReviewedLoaderAutoDisabledFlags": 0,
+    "modifiedLoaderAndForeignConflictsStillDetected": true,
+    "explicitUserRulesPreserved": true
+  },
+  "aot": {
+    "recordAndUse": "PASS",
+    "usingAotLinkedClasses": true,
+    "bytes": 33816576,
+    "sha256": "2ce857acc9db982eefe1886dc734ebb0cef6bea91f0757f31b7f4bfa5c3ee746",
+    "defaultNoIndy": true
+  },
+  "aotScope": "Eligible JDK/adapter support classes; transformed natives and own non-adapter pzopt helpers are excluded from eager archiving.",
+  "offlineStartupSetup": {
+    "focusedTests": 18,
+    "platforms": [
+      "Windows",
+      "Ubuntu 22.04 Python 3.10"
+    ],
+    "actualFinalJarQualified": true,
+    "backupIdempotenceAndUndo": true,
+    "managedAotUpgradeAndScopedUndo": true,
+    "gcOnlyScopedUndo": true
+  },
+  "lua": {
+    "nativeDebugCompileFiles": 19,
+    "failed": 0,
+    "settingsReasonsChecked": 577,
+    "switchedChoiceLeavesChecked": 22,
+    "cpuFixtureRunner": "Lua 5.4 with the Lua 5.1 loadstring alias"
+  },
+  "archive": {
+    "name": "PZ_Optimization-B42.22.2-ZombieBuddy-review.1.zip",
+    "sha256": "f4ebe8d6ba52244d3adc0cbfd2270e074da387254b47f3e389756346775cefe1",
+    "sizeBytes": 63223715,
+    "modJarSha256": "b0f264d991db5516ebfc5b891f2f9624f52d5e3502f1a6d813e90dc454655f9b",
+    "crcAndCompleteFileHashParity": true
+  },
+  "usa": {
+    "implementationCopied": false,
+    "mapAssetsIncluded": false,
+    "finding": "Sparse authored/procedural map strategy is map-specific; optional loaded-area control already existed and retains stock default."
+  },
+  "limits": [
+    "No graphical gameplay acceptance or connected multiplayer run.",
+    "No measured same-FPS, loading-time or VRAM retention claim.",
+    "Normal saved mod selection and author approval still need full game acceptance.",
+    "Requires the explicit early Java agent before the reviewed official ZombieBuddy Java agent; preload alone is insufficient."
+  ],
+  "reproduce": [
+    "python scripts/port-validation/compile-payload.py --game-jar <game>/projectzomboid.jar --output build/compiled",
+    "python scripts/prepare-zombiebuddy.py --classes build/compiled/classes --game-jar <game>/projectzomboid.jar --output build/prepared",
+    "python scripts/build-zombiebuddy.py --payload-root build/prepared --game-jar <game>/projectzomboid.jar --zombiebuddy-jar <official>/ZombieBuddy.jar --output build/review --version 42.22.2-review.1",
+    "python scripts/test-zombiebuddy-payload.py --mod-jar build/review/PZ_Optimization/42/media/java/PZOptimization-ZombieBuddy.jar --game-jar <game>/projectzomboid.jar --zombiebuddy-jar <official>/ZombieBuddy.jar --output build/verified --aot",
+    "python scripts/test-install-zombiebuddy.py"
+  ]
+}
