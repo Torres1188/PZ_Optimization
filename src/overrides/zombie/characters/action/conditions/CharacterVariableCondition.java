@@ -414,10 +414,10 @@ public final class CharacterVariableCondition implements IActionCondition {
 
    /** pzopt: the typed read of a resolved slot; the body pzoptGetValue uses once it has its slot. */
    private static Object pzoptReadSlot(IAnimationVariableSlot variableSlot) {
-      switch (variableSlot.getType()) {
-         case Boolean:
+      switch (pzopt.AnimationVariableKinds.of(variableSlot.getType())) { // pzopt: same enum dispatch in a signer-safe mod helper
+         case 1: // pzopt: Boolean
             return variableSlot.getValueBool() ? Boolean.TRUE : Boolean.FALSE;
-         case Int:
+         case 2: // pzopt: Int
             return Integer.valueOf(Math.abs(variableSlot.getValueInt()));
          default:
             String variableValue = variableSlot.getValueString();

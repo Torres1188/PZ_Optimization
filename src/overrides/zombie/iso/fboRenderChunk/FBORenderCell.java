@@ -116,7 +116,7 @@ import zombie.util.list.PZArrayUtil;
 import zombie.vehicles.BaseVehicle;
 import zombie.vispoly.VisibilityPolygon2;
 
-public final class FBORenderCell {
+public final class FBORenderCell implements pzopt.BakeRecord.Cell, pzopt.DrawRecorder.Deferred { // pzopt: retain bake callbacks on this native definition without an unsigned nested class
    public static final FBORenderCell instance = new FBORenderCell();
    private static final float BLACK_OUT_DIST = 10.0F;
    public static final boolean OUTLINE_DOUBLEDOOR_FRAMES = true;
@@ -2156,35 +2156,33 @@ public final class FBORenderCell {
    }
 
    // pzopt: bakeRecordParallel (pzopt.BakeRecord): the frame's bakes recorded on the frame workers
-   private final FBORenderCell.PzoptBakeCell pzoptBakeCell = new FBORenderCell.PzoptBakeCell(); // pzopt
-   private final FBORenderCell.PzoptBakeCell pzoptBakeDeferred = this.pzoptBakeCell; // pzopt
+   private final FBORenderCell pzoptBakeCell = this; // pzopt: same callback owner, no extra nested class in the signed package
+   private final FBORenderCell pzoptBakeDeferred = this.pzoptBakeCell; // pzopt
 
-   /** pzopt: bakeRecordParallel, the cell's side of a unit (a named class: an anonymous one would renumber the stock FBORenderCell$1). */
-   private final class PzoptBakeCell implements pzopt.BakeRecord.Cell, pzopt.DrawRecorder.Deferred { // pzopt
-      @Override // pzopt
-      public void bakeInfo(pzopt.BakeRecord.Unit u) { // pzopt: the render-info pass on the unit's thread, into its own lists
-         FBORenderCell.this.pzoptBakeInfo(u.chunk, u.level, u.playerIndex, u.chunk.getRenderLevels(u.playerIndex), u.shadow, u.solid, u.shaded, u.veg, u.minus); // pzopt
-      } // pzopt
+   /** pzopt: bakeRecordParallel, the existing unit callbacks remain on their cell (signed-package compatibility). */
+   @Override // pzopt
+   public void bakeInfo(pzopt.BakeRecord.Unit u) { // pzopt
+      this.pzoptBakeInfo(u.chunk, u.level, u.playerIndex, u.chunk.getRenderLevels(u.playerIndex), u.shadow, u.solid, u.shaded, u.veg, u.minus); // pzopt
+   } // pzopt
 
-      @Override // pzopt
-      public void bakeDraw(pzopt.BakeRecord.Unit u) { // pzopt
-         FBORenderCell.this.pzoptBakeFloors(u.chunk, u.level, u.solid); // pzopt
-         FBORenderCell.this.pzoptBakeObjects(u.chunk, u.level, u.playerIndex, u.veg, u.minus); // pzopt
-      } // pzopt
+   @Override // pzopt
+   public void bakeDraw(pzopt.BakeRecord.Unit u) { // pzopt
+      this.pzoptBakeFloors(u.chunk, u.level, u.solid); // pzopt
+      this.pzoptBakeObjects(u.chunk, u.level, u.playerIndex, u.veg, u.minus); // pzopt
+   } // pzopt
 
-      @Override // pzopt
-      public void bakeDeferred(int kind, Object a, Object b) { // pzopt
-         FBORenderCell.this.pzoptBakeDeferredDraw(kind, a, b); // pzopt
-      } // pzopt
+   @Override // pzopt
+   public void bakeDeferred(int kind, Object a, Object b) { // pzopt
+      this.pzoptBakeDeferredDraw(kind, a, b); // pzopt
+   } // pzopt
 
-      @Override // pzopt
-      public void run(int kind, Object a, Object b) { // pzopt
-         FBORenderCell.this.pzoptBakeDeferredDraw(kind, a, b); // pzopt
-      } // pzopt
+   @Override // pzopt
+   public void run(int kind, Object a, Object b) { // pzopt
+      this.pzoptBakeDeferredDraw(kind, a, b); // pzopt
+   } // pzopt
 
-      @Override // pzopt
-      public void flushTrees() { // pzopt: a bake's tree batch has no flush points (drawn once at the end of its object pass)
-      } // pzopt
+   @Override // pzopt
+   public void flushTrees() { // pzopt: a bake's tree batch still flushes only at the end of its object pass
    } // pzopt
 
    /** pzopt: bakeRecordParallel, a draw a recording thread left to the game thread, at its place in the stream. */
@@ -4685,7 +4683,7 @@ public final class FBORenderCell {
                IsoGridSquare.setBlendFunc();
                Shader floorShader = null;
                IndieGL.StartShader(floorShader, playerIndex);
-               FBORenderCell.PzoptCellScratch pzoptCs = this.pzoptCellScratch(); // pzopt: a recording thread's own colour (the game thread's ramp path writes defColorInfo meanwhile)
+               pzopt.CellRenderScratch pzoptCs = this.pzoptCellScratch(); // pzopt: same per-thread colour, signer-safe state
                ColorInfo pzoptCol = pzoptCs == null ? this.defColorInfo : pzoptCs.floorCol; // pzopt
                pzoptCol.set(1.0F, 1.0F, 1.0F, 1.0F); // pzopt
                object.renderFloorTile(square.x, square.y, square.z, pzoptCol, true, false, floorShader, floorShaper, attachedFloorShaper); // pzopt
@@ -6105,7 +6103,7 @@ public final class FBORenderCell {
    public void renderAnimatedAttachments(IsoObject object) {
       int playerIndex = IsoCamera.frameState.playerIndex;
       ColorInfo lightInfo = object.square.getLightInfo(playerIndex);
-      FBORenderCell.PzoptCellScratch pzoptCs = this.pzoptCellScratch(); // pzopt: tileRecordParallel, IsoObject.renderAnimatedAttachments changes the colour it is given for a moment: a recording thread hands it a copy, not the square's own light
+      pzopt.CellRenderScratch pzoptCs = this.pzoptCellScratch(); // pzopt: tileRecordParallel, same per-thread colour copy outside the signed package
       if (pzoptCs != null && lightInfo != null) { // pzopt
          lightInfo = pzoptCs.light.set(lightInfo); // pzopt
       } // pzopt
@@ -7212,15 +7210,8 @@ public final class FBORenderCell {
       }
    }
 
-   /** pzopt: tileRecordParallel, a recording thread's own copies of the pass's instance temporaries (null on any other thread). */
-   private static final class PzoptCellScratch { // pzopt
-      // (42.22: the per-thread TimSort went with PZArrayList; List.sort allocates its own) // pzopt
-      final ArrayList<IsoGridSquare> tempSquares = new ArrayList<>(64); // pzopt
-      final ColorInfo light = new ColorInfo(); // pzopt
-      final ColorInfo floorCol = new ColorInfo(); // pzopt: tileRecordFloors / bakeRecordParallel, the floor draw's colour (defColorInfo is the game thread's)
-   } // pzopt
-
-   private FBORenderCell.PzoptCellScratch pzoptCellScratch() { // pzopt
+   /** pzopt: tileRecordParallel, a recording thread's existing temporaries now live in the mod package. */
+   private pzopt.CellRenderScratch pzoptCellScratch() { // pzopt
       if (!pzopt.DrawRecorder.recording) { // pzopt
          return null; // pzopt
       } // pzopt
@@ -7229,9 +7220,9 @@ public final class FBORenderCell {
          return null; // pzopt
       } // pzopt
       if (r.cellScratch == null) { // pzopt
-         r.cellScratch = new FBORenderCell.PzoptCellScratch(); // pzopt
+         r.cellScratch = new pzopt.CellRenderScratch(); // pzopt
       } // pzopt
-      return (FBORenderCell.PzoptCellScratch)r.cellScratch; // pzopt
+      return (pzopt.CellRenderScratch)r.cellScratch; // pzopt
    } // pzopt
 
 
@@ -7391,7 +7382,7 @@ public final class FBORenderCell {
          List<IsoGridSquare> squaresCutawayOutlines = renderLevels.getCachedSquares_CutawayWindowFrames(level);
          List<IsoGridSquare> squaresItems = renderLevels.getCachedSquares_Items(level);
          if (squaresObjects.size() + squaresItems.size() + squaresCutawayOutlines.size() != 0) {
-            FBORenderCell.PzoptCellScratch pzoptCs = this.pzoptCellScratch(); // pzopt: tileRecordParallel, a recording thread sorts in its own list
+            pzopt.CellRenderScratch pzoptCs = this.pzoptCellScratch(); // pzopt: same per-thread list, signer-safe state
             ArrayList<IsoGridSquare> sorted = pzoptCs == null ? this.tempSquares : pzoptCs.tempSquares; // pzopt
             boolean pzoptOrder = pzopt.TranslucentOrder.enabled(); // pzopt: translucentOrderCache
             if (!pzoptOrder || !pzopt.TranslucentOrder.reuse(c, playerIndex, level, squaresItems, squaresCutawayOutlines, squaresObjects, sorted)) { // pzopt: the kept order when the three lists are unchanged

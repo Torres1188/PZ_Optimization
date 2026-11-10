@@ -157,15 +157,7 @@ public final class IsoSprite {
    public static final boolean SEAM_SOUTH = true;
    private static final IsoSprite.AndThen AND_THEN = new IsoSprite.AndThen();
 
-   /** pzopt: tileRecordParallel, the draw scratch of a thread recording a tile draw unit (the statics on any other thread). */
-   private static final class PzoptScratch { // pzopt
-      final ColorInfo info = new ColorInfo(); // pzopt
-      final Vector3 colorInfoBackup = new Vector3(); // pzopt
-      final Vector3 spritePos = new Vector3(); // pzopt
-      final IsoSprite.AndThen andThen = new IsoSprite.AndThen(); // pzopt
-   } // pzopt
-
-   private static IsoSprite.PzoptScratch pzoptScratch() { // pzopt
+   private static pzopt.IsoSpriteDrawScratch pzoptScratch() { // pzopt
       if (!pzopt.DrawRecorder.recording) { // pzopt
          return null; // pzopt
       } // pzopt
@@ -174,29 +166,29 @@ public final class IsoSprite {
          return null; // pzopt
       } // pzopt
       if (r.isoSpriteScratch == null) { // pzopt
-         r.isoSpriteScratch = new IsoSprite.PzoptScratch(); // pzopt
+         r.isoSpriteScratch = new pzopt.IsoSpriteDrawScratch(new IsoSprite.AndThen()); // pzopt: keep the native private callback constructed by its owner
       } // pzopt
-      return (IsoSprite.PzoptScratch)r.isoSpriteScratch; // pzopt
+      return (pzopt.IsoSpriteDrawScratch)r.isoSpriteScratch; // pzopt
    } // pzopt
 
    private static ColorInfo pzoptInfo() { // pzopt
-      IsoSprite.PzoptScratch s = pzoptScratch(); // pzopt
+      pzopt.IsoSpriteDrawScratch s = pzoptScratch(); // pzopt
       return s == null ? info : s.info; // pzopt
    } // pzopt
 
    private static Vector3 pzoptBackup() { // pzopt
-      IsoSprite.PzoptScratch s = pzoptScratch(); // pzopt
+      pzopt.IsoSpriteDrawScratch s = pzoptScratch(); // pzopt
       return s == null ? IsoSprite.l_renderCurrentAnim.colorInfoBackup : s.colorInfoBackup; // pzopt
    } // pzopt
 
    private static Vector3 pzoptSpritePos() { // pzopt
-      IsoSprite.PzoptScratch s = pzoptScratch(); // pzopt
+      pzopt.IsoSpriteDrawScratch s = pzoptScratch(); // pzopt
       return s == null ? IsoSprite.l_renderCurrentAnim.spritePos : s.spritePos; // pzopt
    } // pzopt
 
    private static IsoSprite.AndThen pzoptAndThen() { // pzopt
-      IsoSprite.PzoptScratch s = pzoptScratch(); // pzopt
-      return s == null ? AND_THEN : s.andThen; // pzopt
+      pzopt.IsoSpriteDrawScratch s = pzoptScratch(); // pzopt
+      return s == null ? AND_THEN : (IsoSprite.AndThen)s.andThen; // pzopt: native callback remains private to the native class
    } // pzopt
 
    private static TileDepthModifier pzoptTdm() { // pzopt

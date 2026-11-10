@@ -34,7 +34,7 @@ public final class KahluaTableImpl implements KahluaTable {
    /** pzopt: uiVerify, the summed write counts of its class chain, valid while pzoptMetaVersion equals pzoptChainVer. */
    public long pzoptChainSum;
    public long pzoptChainVer = -1L;
-   private java.util.HashMap<Object, KahluaTableImpl.PzoptChain> pzoptChain; // pzopt: luaIndexCache, key -> what rawget's metatable walk finds from here
+   private java.util.HashMap<Object, pzopt.LuaChainEntry> pzoptChain; // pzopt: luaIndexCache, mod-owned state outside the signed game package
    /** pzopt: luaIndexCache, bumped by every write to a table that is some table's metatable (any class change drops every cached walk). */
    public static long pzoptMetaVersion = 1L;
    public static long pzoptMtSets; // pzopt: luaMetaVersionNarrow, setmetatable calls on tables no table uses as a metatable
@@ -351,24 +351,17 @@ public final class KahluaTableImpl implements KahluaTable {
       return pzoptValue == null && this.metatable != null ? this.metatable.rawget(key) : pzoptValue;
    }
 
-   /** pzopt: luaIndexCache, one cached result of this.rawget(key) (this table and its metatable walk). */
-   static final class PzoptChain {
-      Object value; // pzopt: luaIndexCache
-      long version; // pzopt: luaIndexCache
-      long kver; // pzopt: luaMetaKeyVersion, pzoptKeyVer of the key's bucket
-   }
-
    /** pzopt: luaIndexCache, this.rawget(key) remembered until any class table changes. */
    private Object pzoptChainGet(Object key) {
       if (this.reloadReplace != null) { // pzopt: luaIndexCache
          return this.rawget(key); // pzopt: luaIndexCache
       } // pzopt: luaIndexCache
-      java.util.HashMap<Object, KahluaTableImpl.PzoptChain> m = this.pzoptChain; // pzopt: luaIndexCache
+      java.util.HashMap<Object, pzopt.LuaChainEntry> m = this.pzoptChain; // pzopt: luaIndexCache, signer-safe helper
       if (m == null) { // pzopt: luaIndexCache
          m = new java.util.HashMap<>(); // pzopt: luaIndexCache
          this.pzoptChain = m; // pzopt: luaIndexCache
       } // pzopt: luaIndexCache
-      KahluaTableImpl.PzoptChain e = m.get(key); // pzopt: luaIndexCache
+      pzopt.LuaChainEntry e = m.get(key); // pzopt: luaIndexCache, signer-safe helper
       long v = pzoptMetaVersion; // pzopt: luaIndexCache
       int pzoptB = pzoptKeyBucket(key); // pzopt: luaMetaKeyVersion
       long pzoptKv = pzoptKeyVer[pzoptB]; // pzopt: luaMetaKeyVersion
@@ -380,7 +373,7 @@ public final class KahluaTableImpl implements KahluaTable {
          if (m.size() > 4096) { // pzopt: luaIndexCache, a table indexed by many distinct keys: stop caching new ones
             return value; // pzopt: luaIndexCache
          } // pzopt: luaIndexCache
-         e = new KahluaTableImpl.PzoptChain(); // pzopt: luaIndexCache
+         e = new pzopt.LuaChainEntry(); // pzopt: luaIndexCache, signer-safe helper
          m.put(key, e); // pzopt: luaIndexCache
       } // pzopt: luaIndexCache
       e.value = value; // pzopt: luaIndexCache

@@ -11020,7 +11020,10 @@ public abstract class IsoGameCharacter
 
       this.getActionContext().update();
       if (GameClient.client) {
-         this.getNetworkCharacterAI().postUpdate();
+         NetworkCharacterAI pzoptNetworkAi = this.getNetworkCharacterAI(); // pzopt: NPC compatibility, a mod character may have no network AI
+         if (pzoptNetworkAi != null) { // pzopt: retain the native non-null update and the animator worker pipeline
+            pzoptNetworkAi.postUpdate(); // pzopt
+         } // pzopt
       }
    }
 

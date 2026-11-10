@@ -34,7 +34,7 @@ public final class IndieGL {
    private static final Object pzoptLock = new Object(); // pzopt: tileRecordParallel, the shader-stack entry pool is shared
 
    /** pzopt: tileRecordParallel, the temps and shader stack of a thread recording a tile draw unit (null on any other thread: the statics). */
-   private static IndieGL.PzoptTemps pzoptT() { // pzopt
+   private static pzopt.IndieGlTemps pzoptT() { // pzopt
       if (!pzopt.DrawRecorder.recording) { // pzopt
          return null; // pzopt
       } // pzopt
@@ -43,9 +43,9 @@ public final class IndieGL {
          return null; // pzopt
       } // pzopt
       if (r.indieGlTemps == null) { // pzopt
-         r.indieGlTemps = new IndieGL.PzoptTemps(); // pzopt
+         r.indieGlTemps = new pzopt.IndieGlTemps(); // pzopt
       } // pzopt
-      return (IndieGL.PzoptTemps)r.indieGlTemps; // pzopt
+      return (pzopt.IndieGlTemps)r.indieGlTemps; // pzopt
    } // pzopt
 
    private static ShaderStackEntry pzoptAllocEntry(Shader shader, int playerIndex) { // pzopt: the entry pool is shared, a recording thread takes it under a lock
@@ -68,18 +68,8 @@ public final class IndieGL {
    } // pzopt
 
    private static Stack<ShaderStackEntry> pzoptStack() { // pzopt
-      IndieGL.PzoptTemps t = pzoptT(); // pzopt
+      pzopt.IndieGlTemps t = pzoptT(); // pzopt
       return t == null ? m_shaderStack : t.shaderStack; // pzopt
-   } // pzopt
-
-   private static final class PzoptTemps { // pzopt
-      final CIntValue tempInt = new CIntValue(); // pzopt
-      final C2IntsValue temp2Ints = new C2IntsValue(); // pzopt
-      final C3IntsValue temp3Ints = new C3IntsValue(); // pzopt
-      final C4IntsValue temp4Ints = new C4IntsValue(); // pzopt
-      final C4BooleansValue temp4Booleans = new C4BooleansValue(); // pzopt
-      final CIntFloatValue tempIntFloat = new CIntFloatValue(); // pzopt
-      final Stack<ShaderStackEntry> shaderStack = new Stack<>(); // pzopt
    } // pzopt
 
    public static void glBlendFunc(int a, int b) {

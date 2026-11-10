@@ -11,25 +11,7 @@ public abstract class ECSComponent {
    private final Class<? extends ECSComponent> ecsClass = getECSClass((Class<? extends ECSComponent>)this.getClass());
    private ECSEntity ecsOwner;
 
-   // pzopt: ecsLookupFast. The walk from a component class up to the one just below ECSComponent (the map key) ran on every
-   // component lookup, i.e. on every getStateMachine / getActionContext / getVariable of every character; the answer per
-   // class never changes, so it is memoised in a ClassValue (one cache probe per lookup).
-   private static final ClassValue<Class<?>> PZOPT_ECS_CLASS = new ClassValue<Class<?>>() {
-      @Override
-      protected Class<?> computeValue(Class<?> clazz) {
-         return pzoptWalkEcsClass(clazz);
-      }
-   };
-
-   private static Class<?> pzoptWalkEcsClass(Class<?> clazz) {
-      Class<?> foundEcsClass = null;
-
-      for (Class<?> c = clazz; c != null && c != ECSComponent.class; c = c.getSuperclass()) {
-         foundEcsClass = c;
-      }
-
-      return foundEcsClass;
-   }
+   // pzopt: ecsLookupFast keeps its ClassValue in the mod package: new unsigned classes may not share this signed game package.
 
    public Class<? extends ECSComponent> getECSClass() {
       return this.ecsClass;
@@ -37,7 +19,7 @@ public abstract class ECSComponent {
 
    public static Class<? extends ECSComponent> getECSClass(Class<? extends ECSComponent> clazz) {
       if (clazz != null && pzopt.Overrides.enabled() && pzopt.Config.ECS_LOOKUP_FAST) { // pzopt: ecsLookupFast
-         return (Class<? extends ECSComponent>)PZOPT_ECS_CLASS.get(clazz);
+         return (Class<? extends ECSComponent>)pzopt.EcsClassCache.get(clazz); // pzopt: same memoised class walk, signer-safe helper
       }
 
       Class<?> foundEcsClass = null;

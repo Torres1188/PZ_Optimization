@@ -1,3 +1,13 @@
+## B42.22.2 / ZombieBuddy review for xD3I
+
+This branch is the requested compatibility contribution to **PZ_Optimization**, retaining its **`pzopt` namespace**. It starts from upstream commit `2f75296ea7e64f2fa0c236eb80d87f4060173ffa`. Our separate FJL-based PZ Optimized project is not included here.
+
+**Start with the [review and installation guide](docs/REVIEW_B42.22.2_ZOMBIEBUDDY.md)** and [validation record](docs/REVIEW_VALIDATION_20261110.json). [Download the review package](https://github.com/Torres1188/PZ_Optimization/releases/tag/b42.22.2-zombiebuddy-review.1). This is an exact-build review release for official **ZombieBuddy 2.3.4** and game revision **`3d39148846`**. Keeping all optimization schemas requires the supplied early bootstrap agent **before** ZombieBuddy's agent; merely enabling a preload mod is too late for four Lua VM classes. The offline setup script backs up the launcher and preserves other settings. No game JAR is modified and native signers/reporting remain intact.
+
+The existing optional loaded-area control is retained with its **stock default**. The USA investigation found that this technique was already present; its sparse procedural terrain is map-specific, so no USA code, map data or duplicate loader is added. Historical performance figures below belong to the upstream build and are **not measurements of this review release**.
+
+---
+
 <h1 align="center">Project Zomboid without the stutter</h1>
 
 <p align="center">

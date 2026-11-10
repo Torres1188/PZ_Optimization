@@ -48,17 +48,12 @@ public final class FBORenderCutaways {
    // never reads: its cut changes at most once per hold (the first cut at once), and the wall returns only after visits
    // have not wanted it for twice the hold. The visit runs only when something changed, so pzoptHoldTick applies a change that
    // became due without one (a forced visit gave another verdict than the last one: the wall came back for 0.1 s).
-   private static final class PzoptMirrorCut {
-      final boolean[] cut = new boolean[2], wanted = new boolean[2];
-      final long[] changedAt = new long[2], wantedAt = new long[2]; // (wantedAt: when wanted last changed)
-   }
-
-   private final java.util.IdentityHashMap<IsoGridSquare, PzoptMirrorCut> pzoptMirrorCut = new java.util.IdentityHashMap<>();
+   private final java.util.IdentityHashMap<IsoGridSquare, pzopt.MirrorCutState> pzoptMirrorCut = new java.util.IdentityHashMap<>(); // pzopt: signer-safe state, same identity keys and hold timings
    private long pzoptHoldNext;
    public static long pzoptMirrorCutsHeld, pzoptMirrorCutsDelayed, pzoptMirrorCutsReleased;
 
    /** The cut a mirror wall's bit should show now (k.cut updated, the change time stamped); false = no change. */
-   private static boolean pzoptDecide(PzoptMirrorCut k, int b, long now, int hold) {
+   private static boolean pzoptDecide(pzopt.MirrorCutState k, int b, long now, int hold) { // pzopt: signer-safe state
       boolean want = k.wanted[b];
       if (want == k.cut[b]) {
          return false;
@@ -85,16 +80,16 @@ public final class FBORenderCutaways {
       for (int b = 0; b < 2; b++) {
          for (IsoGridSquare square : b == 0 ? pd.cutawayVisitorResultsNorth : pd.cutawayVisitorResultsWest) {
             if (!this.pzoptMirrorCut.containsKey(square) && pzopt.Mirrors.mirrorWallBits(square) != 0) {
-               this.pzoptMirrorCut.put(square, new PzoptMirrorCut());
+               this.pzoptMirrorCut.put(square, new pzopt.MirrorCutState()); // pzopt: signer-safe state
             }
          }
       }
       long next = 0L;
-      java.util.Iterator<java.util.Map.Entry<IsoGridSquare, PzoptMirrorCut>> it = this.pzoptMirrorCut.entrySet().iterator();
+      java.util.Iterator<java.util.Map.Entry<IsoGridSquare, pzopt.MirrorCutState>> it = this.pzoptMirrorCut.entrySet().iterator(); // pzopt: signer-safe state
       while (it.hasNext()) {
-         java.util.Map.Entry<IsoGridSquare, PzoptMirrorCut> e = it.next();
+         java.util.Map.Entry<IsoGridSquare, pzopt.MirrorCutState> e = it.next(); // pzopt: signer-safe state
          IsoGridSquare square = e.getKey();
-         PzoptMirrorCut k = e.getValue();
+         pzopt.MirrorCutState k = e.getValue(); // pzopt: signer-safe state
          boolean onLevel = square.z == PZMath.fastfloor(IsoCamera.frameState.camCharacterZ);
          for (int b = 0; b < 2; b++) {
             java.util.HashSet<IsoGridSquare> set = b == 0 ? pd.cutawayVisitorResultsNorth : pd.cutawayVisitorResultsWest;
@@ -136,9 +131,9 @@ public final class FBORenderCutaways {
       FBORenderCutaways.PerPlayerData pd = this.perPlayerData[0];
       int hold = pzopt.Config.MIRRORS_CUTAWAY_HOLD_MS;
       long next = 0L;
-      for (java.util.Map.Entry<IsoGridSquare, PzoptMirrorCut> e : this.pzoptMirrorCut.entrySet()) {
+      for (java.util.Map.Entry<IsoGridSquare, pzopt.MirrorCutState> e : this.pzoptMirrorCut.entrySet()) { // pzopt: signer-safe state
          IsoGridSquare square = e.getKey();
-         PzoptMirrorCut k = e.getValue();
+         pzopt.MirrorCutState k = e.getValue(); // pzopt: signer-safe state
          for (int b = 0; b < 2; b++) {
             if (pzoptDecide(k, b, now, hold)) {
                int bit = b + 1;

@@ -1,0 +1,43 @@
+PZ_Optimization B42.22.2 / ZombieBuddy review
+===========================================
+
+This contribution was prepared at Luis's request for xD3I's review. It preserves the original `PZ_Optimization` identity and `pzopt` namespace. Source baseline: `2f75296ea7e64f2fa0c236eb80d87f4060173ffa`. The separate `com.fadedmods.pzoptimized` FJL project is not bundled or required.
+
+**Exact inputs.** JDK 25; game revision `3d39148846`, `projectzomboid.jar` SHA-256 `3c4a7c5f149d784758c6fb5f8fa85f3a21d572e38bc081400e89035f8120d287`; official ZombieBuddy 2.3.4 JAR SHA-256 `eb79b9876332010733a8e0d7ce4fe0377846059a9e28859029e2a0fb449f6cf2`. Different game or loader bytes are refused. The native Core version in this jar is `42.22.0`, so mod-menu minimum admission uses `42.22.0`; runtime admission requires the complete reviewed B42.22.2 jar hash.
+
+**Why an early bootstrap is necessary.** Official ZombieBuddy warms several Lua VM classes before its mod `PreMain` callback. Some PZ Optimization changes add fields/methods, which cannot be installed later through ordinary JVM redefinition. This build therefore supplies an early Java agent in the same mod JAR, ahead of the existing ZombieBuddy Java agent. It installs initial-definition transformations before ZombieBuddy's warmup. Normal ZombieBuddy mod/preload approval and the regular entry point remain supported and report state. A preload-only attempt refuses clearly before partial installation. ZombieBuddy itself is not modified or redistributed.
+
+Native classes remain defined from the signed game JAR. Modified native definitions are stored as data under `META-INF` in the mod JAR, not as loose game-package classes on the helper classpath. The initial-definition transformer is not retransformation-capable; official 2.3.4's capable transformer runs afterward under the JVM transformer ordering rules. This preserves ZombieBuddy advice as well as optimization schemas. Unknown loaders, foreign target origins, changed bytes and already-loaded targets are refused.
+
+**Install the review package.** Use a separate test installation and cloned saves for initial review. Restore any old loose PZ Optimization installation through its ownership-aware removal procedure first. The new setup does not delete loose classes or other mods and refuses conflicting target origins.
+
+1. Install the pinned official ZombieBuddy 2.3.4 normally. Keep its existing agent setup.
+2. Extract the review archive so the folder `PZ_Optimization` is in the user's `Zomboid/mods` directory. Enable it and approve its normal preload permission in ZombieBuddy, then fully close the game.
+3. Run the supplied setup from this source checkout, with absolute paths:
+
+   ```text
+   python scripts/install-zombiebuddy.py install --game-dir <game-folder> --mod-jar <Zomboid/mods/PZ_Optimization/42/media/java/PZOptimization-ZombieBuddy.jar> --zombiebuddy-jar <installed-official-ZombieBuddy.jar>
+   ```
+
+   It verifies the artifacts, keeps the native game JAR first, inserts the optimization bootstrap before the existing ZombieBuddy agent, and records a verified backup. Its `undo` action restores only an unchanged installation made by that setup. It does not rewrite independent BAT/custom launchers; reproduce the same agent ordering if using one.
+4. Fully restart. Check the `[pzopt/ZombieBuddy]` status for an active exact-build payload. Do not combine this review with FJL PZ Optimized, PZOptPreloader or another loose copy of this mod.
+
+Unsigned review artifacts follow ZombieBuddy's existing approval policy. Author signing/approval and the JVM's signed game packages are distinct; no game signatures or integrity diagnostics are removed.
+
+**Removal requires undoing the early agent first.** With the game closed, run the setup script's `undo` action before disabling/removing the mod JAR, then fully restart. The explicit early Java-agent installation is independent of the mod checkbox; disabling a mod alone cannot unload or remove that startup argument. Keep the JAR in place until undo succeeds. The setup never invents or edits ZombieBuddy approval records.
+
+**Preserved features and compatibility changes.** All existing helper/configuration/visual feature groups remain in the source and prepared payload. Thirteen compiler-generated mod-only classes formerly in signed native packages move to `pzopt` or become callbacks on their existing native owner. ECS class caching, thread-local scratch storage, action snapshot/parallel evaluation, queues and callback bodies remain. The NPC animation continuation keeps its network-AI null guard. The current native main-screen family stays native; narrow early-load hooks retain cache-directory setup, tile-definition handoff and optional loading fade behavior while leaving integrity/version methods untouched.
+
+The legacy updater, installer and uninstall entry points refuse loose-file mutation while this adapter manages the installation. Update the mod package while closed and use the supplied startup setup, rather than copying old game-package classes. This is a loading compatibility change, not removal of a performance algorithm.
+
+**AOT, GC and JVM tuning.** The existing `aotCache` preference uses a managed native-JAR-first, JAR-only cache route. It preserves the loader agents, heap, GC and unrelated options; existing collector selection still runs. Its identity includes the game, helper JAR, pinned loader, JDK/runtime flags and extra configured JARs. A rejected cache returns to recording after checking actual JVM usage logs. It refuses foreign AOT ownership and loose classes it cannot safely omit. It never enables unsafe Java-agent archiving flags. Own non-adapter `pzopt` helpers are marked with an empty private class attribute so they are excluded from archiving: otherwise their native type references make the JVM load optimization targets before even the first Java agent. All 1,131 helper schemas and 11,929 method code arrays remain identical. Eligible JDK AOT caching is retained and the complete production-plan record/use test passes; this is a narrower cache scope than the old loose-class route. Real-game loading-time benefit still needs matched measurement.
+
+**Optional loaded area / USA research.** `chunkGridWidth=0` preserves the stock loaded area. Existing fixed odd widths and `auto` remain available in the optimization settings. Smaller values reduce loaded/simulated/rendered area; use that explicit tradeoff in single-player and fully restart. The customization checks multiplayer flags when `CalcChunkWidth` runs; this is not a claim of validated connected multiplayer behavior.
+
+Inspection of Real USA and the recovered F.3D notes found sparse authored chunks plus native procedural wilderness and compact biome lookups. That changes map content and cannot transparently accelerate arbitrary existing maps. USA's optional smaller chunk area is already provided by the original donor control. This contribution copies no USA implementation, geographic data, weather behavior, zombie placement or save-buffer mutation, and claims no new general loader speedup.
+
+**Build and inspect.** Python 3.10+, JDK 25 and Bash are needed for the existing shader-generation recipes. Obtain the exact game through the owner's Steam installation and the pinned official ZombieBuddy release separately; they are reference inputs and are not committed. Compile to a new output directory using `scripts/port-validation/compile-payload.py`; prepare resources with `scripts/prepare-zombiebuddy.py`; assemble the mod with `scripts/build-zombiebuddy.py`. Each refuses reused output directories. Exact command lines and final evidence are recorded in the validation record accompanying the review release.
+
+The preparer retains original Lua/media/vendor licenses, regenerates the edited-method index, and uses the unchanged shader-generation section of `scripts/build.sh` against the selected game. The upstream `MainScreenState` source remains for provenance, but its family is excluded from shipped replacement definitions because it contains stale reporting methods. Those differences are reported, not waived in the parity audit.
+
+**Evidence boundary.** Source compilation, strict reference/access checking, unedited-method parity, native signer verification, isolated official-ZombieBuddy composition and JVM verification establish the tested contracts. They do not establish a graphical play session, connected multiplayer correctness, arbitrary mod compatibility or unchanged FPS/VRAM/loading-time gains. Historical README benchmark multipliers are not evidence for this new review. Compare matched saves, populations, routes, graphics, cache policy and JVM/GC settings before making performance claims.

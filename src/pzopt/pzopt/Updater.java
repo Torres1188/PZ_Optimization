@@ -186,6 +186,9 @@ public final class Updater {
 
    /** True when the running copy was installed by an installer (there is a manifest to replace). */
    public static boolean canInstall() {
+      if (LegacyInstallGuard.managed()) {
+         return false;
+      }
       Path dir = gameDir();
       return Files.isRegularFile(dir.resolve(MANIFEST)) || Files.isRegularFile(dir.resolve(FILE_LIST));
    }
@@ -194,6 +197,11 @@ public final class Updater {
 
    /** Starts the release check once per boot (from GameWindow.mainThreadInit, and the menu); later calls are no-ops. */
    public static void check() {
+      if (LegacyInstallGuard.managed()) {
+         message = LegacyInstallGuard.reason();
+         state = State.ERROR;
+         return;
+      }
       if (started) {
          return;
       }
@@ -231,6 +239,11 @@ public final class Updater {
    }
 
    static void runCheck(Path game, String rev) {
+      if (LegacyInstallGuard.managed()) {
+         message = LegacyInstallGuard.reason();
+         state = State.ERROR;
+         return;
+      }
       String ours = installedCommit();
       long built = builtEpoch();
       deleteTree(game.resolve("pzopt-update.tmp")); // a stage left by an older updater
@@ -708,6 +721,11 @@ public final class Updater {
 
    /** Installs the offered release on a daemon thread; false if there is nothing to install. */
    public static boolean install() {
+      if (LegacyInstallGuard.managed()) {
+         message = LegacyInstallGuard.reason();
+         state = State.ERROR;
+         return false;
+      }
       Release r;
       synchronized (Updater.class) { // the GitHub answer may replace a Workshop offer until the install starts
          r = release;
@@ -760,6 +778,9 @@ public final class Updater {
     * longer has, writes the manifest. Returns rel path → sha256 of what is installed now.
     */
    static Map<String, String> applyPrepared(Prepared p, Path dir, String rev, String what) throws Exception {
+      if (LegacyInstallGuard.managed()) {
+         throw new IOException(LegacyInstallGuard.reason());
+      }
       if (p.names.isEmpty()) {
          throw new IOException(what + " is empty");
       }

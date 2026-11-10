@@ -58,6 +58,9 @@ public final class BootRepair {
 
    /** True when the installed files were removed or replaced: main must end now (the game is being started again). */
    public static boolean run(String[] args) {
+      if (LegacyInstallGuard.managed()) {
+         return false;
+      }
       Path zomboid = zomboidDir(args);
       Path base = zomboid.resolve("pzopt");
       boolean touched = false;

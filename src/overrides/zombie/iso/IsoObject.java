@@ -199,14 +199,7 @@ public class IsoObject extends GameEntity implements Serializable, ILuaIsoObject
    public static boolean lowLightingQualityHack;
    private static final ColorInfo stCol2 = new ColorInfo();
 
-   /** pzopt: tileRecordParallel, the draw scratch of a thread recording a tile draw unit (the statics on any other thread). */
-   private static final class PzoptScratch { // pzopt
-      final ColorInfo stCol = new ColorInfo(); // pzopt
-      final ColorInfo stCol2 = new ColorInfo(); // pzopt
-      final ColorInfo modelCol = new ColorInfo(); // pzopt: tileRecordModels, the door light copy (renderModel)
-   } // pzopt
-
-   private static IsoObject.PzoptScratch pzoptScratch() { // pzopt
+   private static pzopt.IsoObjectDrawScratch pzoptScratch() { // pzopt
       if (!pzopt.DrawRecorder.recording) { // pzopt
          return null; // pzopt
       } // pzopt
@@ -215,18 +208,18 @@ public class IsoObject extends GameEntity implements Serializable, ILuaIsoObject
          return null; // pzopt
       } // pzopt
       if (r.isoObjectScratch == null) { // pzopt
-         r.isoObjectScratch = new IsoObject.PzoptScratch(); // pzopt
+         r.isoObjectScratch = new pzopt.IsoObjectDrawScratch(); // pzopt
       } // pzopt
-      return (IsoObject.PzoptScratch)r.isoObjectScratch; // pzopt
+      return (pzopt.IsoObjectDrawScratch)r.isoObjectScratch; // pzopt
    } // pzopt
 
    private static ColorInfo pzoptStCol() { // pzopt
-      IsoObject.PzoptScratch s = pzoptScratch(); // pzopt
+      pzopt.IsoObjectDrawScratch s = pzoptScratch(); // pzopt
       return s == null ? stCol : s.stCol; // pzopt
    } // pzopt
 
    private static ColorInfo pzoptStCol2() { // pzopt
-      IsoObject.PzoptScratch s = pzoptScratch(); // pzopt
+      pzopt.IsoObjectDrawScratch s = pzoptScratch(); // pzopt
       return s == null ? stCol2 : s.stCol2; // pzopt
    } // pzopt
    private static final ColorInfo colFxMask = new ColorInfo(1.0F, 1.0F, 1.0F, 1.0F);
@@ -6393,7 +6386,7 @@ public class IsoObject extends GameEntity implements Serializable, ILuaIsoObject
       if (bDoor && this.square != null && !DebugOptions.instance.fboRenderChunk.nolighting.getValue()) {
          col = this.square.getLightInfo(playerIndex);
       }
-      IsoObject.PzoptScratch pzoptMs = pzoptScratch(); // pzopt: tileRecordModels, a recording thread scales its own copy of the light (stock scales the square's shared light info and puts it back after)
+      pzopt.IsoObjectDrawScratch pzoptMs = pzoptScratch(); // pzopt: tileRecordModels, a recording thread scales its own copy of the light (stock scales the square's shared light info and puts it back after)
       if (pzoptMs != null) { // pzopt
          col = pzoptMs.modelCol.set(col); // pzopt
       } // pzopt

@@ -131,6 +131,10 @@ public final class AotCache {
    }
 
    static void step() throws Exception {
+      if (LegacyInstallGuard.managed()) {
+         ManagedAotCache.step();
+         return;
+      }
       Path game = Updater.gameDir();
       Path json = game.resolve("ProjectZomboid64.json");
       if (!Files.isRegularFile(json)) {
@@ -328,6 +332,7 @@ public final class AotCache {
 
    /** Set the launcher to the cache form with the given AOT option (record or use). */
    static void writeLauncher(Path game, String aotOption) throws IOException {
+      if (LegacyInstallGuard.managed()) throw new IOException("Managed AOT uses the signed native-first launcher route");
       Path json = game.resolve("ProjectZomboid64.json");
       JSONObject j = new JSONObject(Files.readString(json, StandardCharsets.UTF_8));
       stripAot(j);
@@ -354,6 +359,7 @@ public final class AotCache {
 
    /** Put a cache-form launcher back to the loose form ("." first, no AOT options); false if it was loose already. */
    public static boolean resetLauncher(Path game) throws IOException {
+      if (LegacyInstallGuard.managed()) return ManagedAotCache.reset(game);
       Path json = game.resolve("ProjectZomboid64.json");
       if (!Files.isRegularFile(json)) {
          return false;

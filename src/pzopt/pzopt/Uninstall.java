@@ -48,6 +48,9 @@ public final class Uninstall {
 
    /** Why the button is off, or "" when an uninstall can start. */
    public static String unavailableReason() {
+      if (LegacyInstallGuard.managed()) {
+         return LegacyInstallGuard.reason();
+      }
       if (Harness.REQUESTED || Harness.active()) {
          return "not during a harness run";
       }

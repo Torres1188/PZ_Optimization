@@ -125,6 +125,7 @@ public final class ModCompat {
          policyUsed = policy;
          editedSeen = edited;
          scanned.putAll(sources());
+         applyManagedLoaderPolicy(scanned, policy);
          for (Map.Entry<String, List<File>> src : scanned.entrySet()) {
             for (File jar : src.getValue()) {
                scanJar(src.getKey(), jar, shadowed, edited, hits);
@@ -375,6 +376,18 @@ public final class ModCompat {
       return m;
    }
 
+   /** Retain actual report/source IDs and explicit user rules for the exact reviewed managed loader. */
+   static void applyManagedLoaderPolicy(Map<String, List<File>> sources, Map<String, String> policy) {
+      for (Map.Entry<String, List<File>> source : sources.entrySet()) {
+         for (File jar : source.getValue()) {
+            if (LegacyInstallGuard.reviewedBuddyJar(jar)) {
+               policy.putIfAbsent(source.getKey(), policy.getOrDefault("ZombieBuddy", "ok"));
+               break;
+            }
+         }
+      }
+   }
+
    // ── what we ship ───────────────────────────────────────────────────────────────────────────────────────────
 
    /** build-info's overrides list, inner classes match through their outer class. */
@@ -580,6 +593,9 @@ public final class ModCompat {
    // ── class files ────────────────────────────────────────────────────────────────────────────────────────────
 
    static void scanJar(String source, File jar, Set<String> shadowed, Map<String, Map<String, String[]>> edited, List<Hit> hits) {
+      if (LegacyInstallGuard.owns(jar)) {
+         return; // our exact managed payload is not another mod patching our implementation
+      }
       try (ZipFile zip = new ZipFile(jar)) {
          var entries = zip.entries();
          while (entries.hasMoreElements()) {

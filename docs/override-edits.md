@@ -9012,3 +9012,27 @@ section, both kept). Master's new code read the square object list as the remove
 above: `ChunkAo` (the block scan in the AO job), `PixelLight.hasForceAmbient` (pplUnseenBlend), `Sway` (the square's swaying
 sprite, `getElements()` array read -> `List.get`). No other 42.22-removed API (`isNorth()`, `getGameMode()`,
 `getSkyLightLevel()`, `getOptionTexture2x`, Last Stand) appears in master's additions since `22f546a7`.
+
+### Signed B42.22.2 / official ZombieBuddy 2.3.4 review (2026-11-10)
+
+The exact `3d39148846` jar is reviewed by complete SHA-256, not only its patch label. Thirteen mod-only compiler outputs
+move out of signed native packages: typed data/scratch holders move to `pzopt`, ECS ClassValue storage and external enum
+dispatch move to `pzopt`, bake/spawn callbacks stay on their existing native owners, and the chunk handoff producer
+delegates its original static bodies. Queues, defaults, ThreadLocal isolation and non-null callback bodies remain.
+The NPC animation continuation checks its stored network AI for null without dropping the ordinary continuation.
+Optional chunk-grid customization retains the stock default and checks multiplayer flags at the width calculation.
+
+The native MainScreenState family remains in the signed jar: its old source contains two reporting/version mismatches
+which are explicitly excluded, not waived. Three narrow early-load method hooks preserve cache-directory setup,
+tile-definition handoff and loading-fade behavior; 22 other method code arrays, including reporting, remain identical.
+Windows parity path handling is corrected so the audit actually compares methods. Against the unchanged allow list,
+9,514 unedited shipped methods match current stock fingerprints, with zero mismatches. Strict all-member resolution
+checks 23,266 concrete methods across 1,600 class files with zero errors and unchanged Config declarations/defaults.
+
+Official ZombieBuddy loads four Lua VM classes before ordinary mod preload. The separate early bootstrap therefore
+runs before its unmodified Java agent; a preload-only or incorrect-order attempt refuses before partial registration.
+Whole native definitions stay data in the mod JAR and retain native class-definition origin and certificates. Managed
+legacy installer/update/removal calls refuse loose-file mutation. AOT uses a separate native-first cache route; own
+helpers are excluded from eager archiving by an empty class attribute, with unchanged fields and method code arrays.
+The full official-loader and production-AOT fixtures verify that this retains native transformation and loader advice.
+These are source/JVM contracts, not graphical performance or multiplayer measurements.

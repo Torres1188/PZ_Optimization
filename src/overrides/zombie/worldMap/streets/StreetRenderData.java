@@ -101,30 +101,19 @@ public final class StreetRenderData {
       }
    }
 
-   /** pzopt: mapStreetCache, one map UI's last street-label layout and what it was laid out for. */
-   private static final class PzoptLabels {
-      final ArrayList<CharLayout> chars = new ArrayList<>(); // pzopt: mapStreetCache
-      Object streets; // pzopt: mapStreetCache
-      long stamp; // pzopt: mapStreetCache
-      long key; // pzopt: mapStreetCache
-      boolean valid; // pzopt: mapStreetCache
-      long pendingStamp; // pzopt: mapStreetCache
-      long pendingKey; // pzopt: mapStreetCache
-   }
-
-   private static final java.util.IdentityHashMap<UIWorldMap, StreetRenderData.PzoptLabels> pzoptLabels = new java.util.IdentityHashMap<>(); // pzopt: mapStreetCache
+   private static final java.util.IdentityHashMap<UIWorldMap, pzopt.StreetLabelCache> pzoptLabels = new java.util.IdentityHashMap<>(); // pzopt: mapStreetCache
 
    /** pzopt: mapStreetCache, copies the kept layout into this.characters when the view, streets, options, style and language are unchanged. */
    private boolean pzoptCachedLabels(UIWorldMap ui, WorldMapRenderer renderer, boolean rebuilt) {
       if (!pzopt.MapStreets.cache()) { // pzopt: mapStreetCache
          return false; // pzopt: mapStreetCache
       } // pzopt: mapStreetCache
-      StreetRenderData.PzoptLabels c = pzoptLabels.get(ui); // pzopt: mapStreetCache
+      pzopt.StreetLabelCache c = pzoptLabels.get(ui); // pzopt: mapStreetCache
       if (c == null) { // pzopt: mapStreetCache
          if (pzoptLabels.size() > 8) { // pzopt: mapStreetCache
             pzoptLabels.clear(); // pzopt: mapStreetCache
          } // pzopt: mapStreetCache
-         c = new StreetRenderData.PzoptLabels(); // pzopt: mapStreetCache
+         c = new pzopt.StreetLabelCache(); // pzopt: mapStreetCache
          pzoptLabels.put(ui, c); // pzopt: mapStreetCache
       } // pzopt: mapStreetCache
       long stamp = pzopt.MapStreets.viewStamp(ui); // pzopt: mapStreetCache
@@ -156,7 +145,7 @@ public final class StreetRenderData {
 
    /** pzopt: mapStreetCache, keeps a copy of the layout just made (this.characters) with its keys. */
    private void pzoptKeepLabels(UIWorldMap ui) {
-      StreetRenderData.PzoptLabels c = pzopt.MapStreets.cache() ? pzoptLabels.get(ui) : null; // pzopt: mapStreetCache
+      pzopt.StreetLabelCache c = pzopt.MapStreets.cache() ? pzoptLabels.get(ui) : null; // pzopt: mapStreetCache
       if (c == null) { // pzopt: mapStreetCache
          return; // pzopt: mapStreetCache
       } // pzopt: mapStreetCache

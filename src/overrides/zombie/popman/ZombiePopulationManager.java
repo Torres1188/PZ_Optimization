@@ -47,7 +47,7 @@ import zombie.util.PZXmlParserException;
 import zombie.util.PZXmlUtil;
 import zombie.util.list.PZArrayUtil;
 
-public final class ZombiePopulationManager {
+public final class ZombiePopulationManager implements pzopt.SlackWork.Producer { // pzopt: keep spawn callbacks on their native owner, avoiding an unsigned nested class
    static {
       pzopt.Overrides.onClassLoaded("zombie.popman.ZombiePopulationManager");
    }
@@ -679,22 +679,22 @@ public final class ZombiePopulationManager {
    private int[] pzoptSpDesc = new int[256], pzoptSpTx = new int[256], pzoptSpTy = new int[256], pzoptSpPid = new int[256], pzoptSpFrame = new int[256]; // pzopt
    private long[] pzoptSpNs = new long[256]; // pzopt: when each entry was queued
    private final pzopt.SlackWork.Cost pzoptSpawnSlackCost = new pzopt.SlackWork.Cost(300_000.0, 0.0); // pzopt: slackWork, one zombie's creation (the mean: one size of job)
-   private final pzopt.SlackWork.Producer pzoptSpawnProducer = new pzopt.SlackWork.Producer() { // pzopt: slackWork, the queue below
-      public boolean pending() { // pzopt
-         return ZombiePopulationManager.this.pzoptSpHead < ZombiePopulationManager.this.pzoptSpTail; // pzopt
-      } // pzopt
-      public long nextCostNs() { // pzopt
-         return ZombiePopulationManager.this.pzoptSpawnSlackCost.estimate(); // pzopt
-      } // pzopt
-      public int nextAgeFrames() { // pzopt
-         return pzopt.SlackWork.frame() - ZombiePopulationManager.this.pzoptSpFrame[ZombiePopulationManager.this.pzoptSpHead]; // pzopt
-      } // pzopt
-      public void runNext() { // pzopt
-         long t0 = System.nanoTime(); // pzopt
-         ZombiePopulationManager.this.pzoptSpawnOne(); // pzopt
-         ZombiePopulationManager.this.pzoptSpawnSlackCost.learn(System.nanoTime() - t0); // pzopt
-      } // pzopt
-   }; // pzopt
+   private final pzopt.SlackWork.Producer pzoptSpawnProducer = this; // pzopt: same queue owner, no extra signed-package helper
+
+   public boolean pending() { // pzopt
+      return this.pzoptSpHead < this.pzoptSpTail; // pzopt
+   } // pzopt
+   public long nextCostNs() { // pzopt
+      return this.pzoptSpawnSlackCost.estimate(); // pzopt
+   } // pzopt
+   public int nextAgeFrames() { // pzopt
+      return pzopt.SlackWork.frame() - this.pzoptSpFrame[this.pzoptSpHead]; // pzopt
+   } // pzopt
+   public void runNext() { // pzopt
+      long t0 = System.nanoTime(); // pzopt
+      this.pzoptSpawnOne(); // pzopt
+      this.pzoptSpawnSlackCost.learn(System.nanoTime() - t0); // pzopt
+   } // pzopt
    private int pzoptSpHead, pzoptSpTail; // pzopt: queue [head, tail)
    public static long pzoptSpawnQueued, pzoptSpawnMax, pzoptSpawnAged; // pzopt
 

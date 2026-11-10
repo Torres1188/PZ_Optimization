@@ -365,35 +365,7 @@ public final class IsoGridSquare {
    private static final Color interp2 = new Color(1, 1, 1, 1);
    private static final Color finalCol = new Color(1, 1, 1, 1);
 
-   /**
-    * pzopt: tileRecordParallel, the wall-drawing scratch that stock keeps in statics (corner colours, the circle stencil
-    * flag, the cut-away wall flags, the light / interpolation temps): the game thread's set (the statics' own objects)
-    * or a recording thread's own.
-    */
-   public static final class PzoptWallCtx { // pzopt
-      int colu, coll, colr, colu2, coll2, colr2; // pzopt
-      boolean circleStencil, wallCutawayW, wallCutawayN; // pzopt
-      final ColorInfo lightInfoTemp; // pzopt
-      final ColorInfo defColorInfo; // pzopt
-      final Color tr, tl, br, bl, interp1, interp2, finalCol; // pzopt
-
-      PzoptWallCtx(boolean game) { // pzopt
-         this.lightInfoTemp = game ? IsoGridSquare.lightInfoTemp : new ColorInfo(); // pzopt
-         this.defColorInfo = game ? IsoGridSquare.defColorInfo : new ColorInfo(); // pzopt
-         this.tr = game ? IsoGridSquare.tr : new Color(1, 1, 1, 1); // pzopt
-         this.tl = game ? IsoGridSquare.tl : new Color(1, 1, 1, 1); // pzopt
-         this.br = game ? IsoGridSquare.br : new Color(1, 1, 1, 1); // pzopt
-         this.bl = game ? IsoGridSquare.bl : new Color(1, 1, 1, 1); // pzopt
-         this.interp1 = game ? IsoGridSquare.interp1 : new Color(1, 1, 1, 1); // pzopt
-         this.interp2 = game ? IsoGridSquare.interp2 : new Color(1, 1, 1, 1); // pzopt
-         this.finalCol = game ? IsoGridSquare.finalCol : new Color(1, 1, 1, 1); // pzopt
-         if (!game) { // pzopt
-            this.defColorInfo.set(IsoGridSquare.defColorInfo); // pzopt
-         } // pzopt
-      } // pzopt
-   } // pzopt
-
-   private static IsoGridSquare.PzoptWallCtx pzoptGameW; // pzopt
+   private static pzopt.GridWallScratch pzoptGameW; // pzopt
    private static final Texture[] pzoptCutawayTex = new Texture[4]; // pzopt: tileRecordParallel, the cutaway mask textures (a recording thread must not look them up in the shared, unsynchronized table)
 
    private static Texture pzoptCutawayTexture(int k, String name) { // pzopt
@@ -415,26 +387,26 @@ public final class IsoGridSquare {
       pzoptCutawayTexture(3, "media/windowframe_cutaways_3.png"); // pzopt
    } // pzopt
 
-   private static IsoGridSquare.PzoptWallCtx pzoptW() { // pzopt
+   private static pzopt.GridWallScratch pzoptW() { // pzopt
       if (pzopt.DrawRecorder.recording) { // pzopt
          pzopt.DrawRecorder r = pzopt.DrawRecorder.currentRecorder(); // pzopt
          if (r != null) { // pzopt
             if (r.isoGridSquareScratch == null) { // pzopt
-               r.isoGridSquareScratch = new IsoGridSquare.PzoptWallCtx(false); // pzopt
+               r.isoGridSquareScratch = new pzopt.GridWallScratch(defColorInfo); // pzopt: preserve per-recorder colours without unsigned classes in a signed package
             } // pzopt
-            return (IsoGridSquare.PzoptWallCtx)r.isoGridSquareScratch; // pzopt
+            return (pzopt.GridWallScratch)r.isoGridSquareScratch; // pzopt
          } // pzopt
       } // pzopt
-      IsoGridSquare.PzoptWallCtx g = pzoptGameW; // pzopt
+      pzopt.GridWallScratch g = pzoptGameW; // pzopt
       if (g == null) { // pzopt
-         g = pzoptGameW = new IsoGridSquare.PzoptWallCtx(true); // pzopt
+         g = pzoptGameW = new pzopt.GridWallScratch(lightInfoTemp, defColorInfo, tr, tl, br, bl, interp1, interp2, finalCol); // pzopt: preserve aliases of the native private scratch objects
       } // pzopt
       return g; // pzopt
    } // pzopt
 
    /** pzopt: FBORenderCell's writes of the circle stencil flag go to the calling thread's wall scratch (and the static, which ServerGUI reads, on the game thread). */
    public static void pzoptSetCircleStencil(boolean v) { // pzopt
-      IsoGridSquare.PzoptWallCtx w = pzoptW(); // pzopt
+      pzopt.GridWallScratch w = pzoptW(); // pzopt
       w.circleStencil = v; // pzopt
       if (w == pzoptGameW) { // pzopt
          circleStencil = v; // pzopt
@@ -1286,7 +1258,7 @@ public final class IsoGridSquare {
    }
 
    private void renderAttachedSpritesWithNoWallLighting(IsoObject obj, ColorInfo lightInfo, Consumer<TextureDraw> texdModifier) {
-      IsoGridSquare.PzoptWallCtx pzw = pzoptW(); // pzopt: tileRecordParallel
+      pzopt.GridWallScratch pzw = pzoptW(); // pzopt: tileRecordParallel
       if (obj.attachedAnimSprite != null && !obj.attachedAnimSprite.isEmpty()) {
          boolean needed = false;
 
@@ -1391,7 +1363,7 @@ public final class IsoGridSquare {
       boolean bHasWindowW,
       WallShaper texdModifier
    ) {
-      IsoGridSquare.PzoptWallCtx pzw = pzoptW(); // pzopt: tileRecordParallel
+      pzopt.GridWallScratch pzw = pzoptW(); // pzopt: tileRecordParallel
       Texture tex_1 = pzoptCutawayTexture(0, "media/wallcutaways.png"); // pzopt: tileRecordParallel, resolved once on the game thread
       Texture tex_2 = pzoptCutawayTexture(1, "media/windowframe_cutaways.png"); // pzopt: tileRecordParallel, resolved once on the game thread
       Texture tex_3 = pzoptCutawayTexture(2, "media/windowframe_cutaways_2.png"); // pzopt: tileRecordParallel, resolved once on the game thread
@@ -1772,7 +1744,7 @@ public final class IsoGridSquare {
       int col3,
       WallShaderTexRender wallShaderTexRender
    ) {
-      IsoGridSquare.PzoptWallCtx pzw = pzoptW(); // pzopt: tileRecordParallel
+      pzopt.GridWallScratch pzw = pzoptW(); // pzopt: tileRecordParallel
       if (DebugOptions.instance.terrain.renderTiles.isoGridSquare.walls.attachedSprites.getValue()) {
          if (SceneShaderStore.cutawayAttachedShader != null) {
             SpriteRenderer.instance.setExtraWallShaderParams(null);
@@ -1818,7 +1790,7 @@ public final class IsoGridSquare {
    }
 
    public void DoCutawayShaderSprite(IsoSprite sprite, IsoDirections dir, int cutawaySelf, int cutawayN, int cutawayS, int cutawayW, int cutawayE) {
-      IsoGridSquare.PzoptWallCtx pzw = pzoptW(); // pzopt: tileRecordParallel
+      pzopt.GridWallScratch pzw = pzoptW(); // pzopt: tileRecordParallel
       IsoGridSquare.CutawayNoDepthShader shader = IsoGridSquare.CutawayNoDepthShader.getInstance();
       WallShaperWhole texdModifier = pzopt.RenderScratch.wsWhole(); // pzopt: tileRecordParallel, the thread's own modifier (pzopt.RenderScratch)
       int playerIndex = IsoCamera.frameState.playerIndex;
@@ -2056,7 +2028,7 @@ public final class IsoGridSquare {
       boolean bHasWindowW,
       Shader wallRenderShader
    ) {
-      IsoGridSquare.PzoptWallCtx pzw = pzoptW(); // pzopt: tileRecordParallel
+      pzopt.GridWallScratch pzw = pzoptW(); // pzopt: tileRecordParallel
       if (!DebugOptions.instance.terrain.renderTiles.isoGridSquare.walls.nw.getValue()) {
          return stenciled;
       }
@@ -2158,7 +2130,7 @@ public final class IsoGridSquare {
       boolean bHasWindowN,
       Shader wallRenderShader
    ) {
-      IsoGridSquare.PzoptWallCtx pzw = pzoptW(); // pzopt: tileRecordParallel
+      pzopt.GridWallScratch pzw = pzoptW(); // pzopt: tileRecordParallel
       if (!DebugOptions.instance.terrain.renderTiles.isoGridSquare.walls.n.getValue()) {
          return stenciled;
       }
@@ -2261,7 +2233,7 @@ public final class IsoGridSquare {
       boolean bHasWindowW,
       Shader wallRenderShader
    ) {
-      IsoGridSquare.PzoptWallCtx pzw = pzoptW(); // pzopt: tileRecordParallel
+      pzopt.GridWallScratch pzw = pzoptW(); // pzopt: tileRecordParallel
       if (!DebugOptions.instance.terrain.renderTiles.isoGridSquare.walls.w.getValue()) {
          return stenciled;
       }
@@ -2389,7 +2361,7 @@ public final class IsoGridSquare {
       WallShaperWhole texdModifier,
       Shader wallRenderShader
    ) {
-      IsoGridSquare.PzoptWallCtx pzw = pzoptW(); // pzopt: tileRecordParallel
+      pzopt.GridWallScratch pzw = pzoptW(); // pzopt: tileRecordParallel
       int playerIndex = IsoCamera.frameState.playerIndex;
       if (this.z != PZMath.fastfloor(IsoCamera.getCameraCharacterZ())) {
          circleStencil = false;
@@ -2416,7 +2388,7 @@ public final class IsoGridSquare {
    private int performDrawWallOnly(
       IsoObject obj, IsoDirections dir, int stenciled, int playerIndex, boolean noWallLighting, Consumer<TextureDraw> texdModifier, Shader wallRenderShader
    ) {
-      IsoGridSquare.PzoptWallCtx pzw = pzoptW(); // pzopt: tileRecordParallel
+      pzopt.GridWallScratch pzw = pzoptW(); // pzopt: tileRecordParallel
       IndieGL.enableAlphaTest();
       if (!noWallLighting) {
       }
@@ -2440,7 +2412,7 @@ public final class IsoGridSquare {
    private int performDrawWall(
       IsoObject obj, IsoDirections dir, int stenciled, int playerIndex, boolean noWallLighting, Consumer<TextureDraw> texdModifier, Shader wallRenderShader
    ) {
-      IsoGridSquare.PzoptWallCtx pzw = pzoptW(); // pzopt: tileRecordParallel
+      pzopt.GridWallScratch pzw = pzoptW(); // pzopt: tileRecordParallel
       pzw.lightInfoTemp.set(this.lightInfo[playerIndex]); // pzopt: tileRecordParallel, the thread's own wall scratch
       if (Core.debug && DebugOptions.instance.debugDrawSkipWorldShading.getValue()) {
          obj.render(this.x, this.y, this.z, pzw.defColorInfo, true, !noWallLighting, null); // pzopt: tileRecordParallel, the thread's own wall scratch
@@ -2458,7 +2430,7 @@ public final class IsoGridSquare {
    private void calculateWallAlphaCommon(
       IsoObject obj, boolean isCutaway, boolean bHasDoor, boolean bHasWindow, int playerIndex, boolean isDoor, boolean isWindow
    ) {
-      IsoGridSquare.PzoptWallCtx pzw = pzoptW(); // pzopt: tileRecordParallel
+      pzopt.GridWallScratch pzw = pzoptW(); // pzopt: tileRecordParallel
       if (isDoor || isWindow) {
          if (!isWindow || !PerformanceSettings.fboRenderChunk) {
             if (isCutaway) {
@@ -4803,7 +4775,7 @@ public final class IsoGridSquare {
    }
 
    public void interpolateLight(ColorInfo inf, float x, float y) {
-      IsoGridSquare.PzoptWallCtx pzw = pzoptW(); // pzopt: tileRecordParallel
+      pzopt.GridWallScratch pzw = pzoptW(); // pzopt: tileRecordParallel
       IsoCell cell = this.getCell();
       if (x < 0.0F) {
          x = 0.0F;
@@ -8164,7 +8136,7 @@ public final class IsoGridSquare {
    }
 
    private int renderFloorInternal(Shader floorShader) {
-      IsoGridSquare.PzoptWallCtx pzw = pzoptW(); // pzopt: tileRecordParallel
+      pzopt.GridWallScratch pzw = pzoptW(); // pzopt: tileRecordParallel
       int playerIndex = IsoCamera.frameState.playerIndex;
       ColorInfo lightInfo = this.lightInfo[playerIndex];
       IsoGridSquare camCharacterSquare = IsoCamera.frameState.camCharacterSquare;
@@ -8586,7 +8558,7 @@ public final class IsoGridSquare {
    public boolean renderMinusFloor(
       int maxZ, boolean doSE, boolean vegitationRender, int cutawaySelf, int cutawayN, int cutawayS, int cutawayW, int cutawayE, Shader wallRenderShader
    ) {
-      IsoGridSquare.PzoptWallCtx pzw = pzoptW(); // pzopt: tileRecordParallel
+      pzopt.GridWallScratch pzw = pzoptW(); // pzopt: tileRecordParallel
       if (!DebugOptions.instance.terrain.renderTiles.isoGridSquare.renderMinusFloor.getValue()) {
          return false;
       }
@@ -9694,7 +9666,7 @@ public final class IsoGridSquare {
    }
 
    public static ColorInfo getDefColorInfo() {
-      IsoGridSquare.PzoptWallCtx pzw = pzoptW(); // pzopt: tileRecordParallel
+      pzopt.GridWallScratch pzw = pzoptW(); // pzopt: tileRecordParallel
       return pzw.defColorInfo; // pzopt: tileRecordParallel, the thread's own wall scratch
    }
 

@@ -126,7 +126,9 @@ public final class IsoChunkMap {
          chunkGridWidth = PZMath.min(chunkGridWidth, 19);
          // pzopt: chunkGridWidth, the player's chunk grid size instead of the screen-size one (0 = the stock value above,
          // "auto" = wide enough to fill the screen at the widest zoom); odd like stock so the player's chunk stays the centre
-         if (pzopt.Overrides.enabled() && (pzopt.Config.CHUNK_GRID_AUTO || pzopt.Config.CHUNK_GRID_WIDTH > 0)) { // pzopt
+         // pzopt: optional render distance is single-player only; multiplayer keeps the native player-centred grid.
+         if (!GameClient.client && !GameServer.server && pzopt.Overrides.enabled() // pzopt: preserve native multiplayer sizing
+               && (pzopt.Config.CHUNK_GRID_AUTO || pzopt.Config.CHUNK_GRID_WIDTH > 0)) { // pzopt
             int pzoptStock = chunkGridWidth; // pzopt
             pzopt.ChunkGrid.stock = pzoptStock; // pzopt: the cap of the height shift in ProcessChunkPos
             chunkGridWidth = pzopt.ChunkGrid.width(pzoptStock, pzopt.Config.CHUNK_GRID_AUTO, pzopt.Config.CHUNK_GRID_WIDTH, // pzopt
@@ -322,58 +324,56 @@ public final class IsoChunkMap {
    private static final pzopt.SlackWork.Cost PZOPT_LEVEL_COST = new pzopt.SlackWork.Cost(20_000.0, 0.5); // pzopt: hand-off ns per square (levels of a downtown tower are mostly empty)
    private static int pzoptStagedSquares; // pzopt
    private static final pzopt.SlackWork.Cost PZOPT_CHUNK_COST = new pzopt.SlackWork.Cost(500_000.0, 0.0); // pzopt: chunkHandoffCost=chunk, a whole hand-off's running mean (slack and in-frame ones)
-   private static final pzopt.SlackWork.Producer PZOPT_HANDOFF = new pzopt.SlackWork.Producer() { // pzopt
-      public boolean pending() { // pzopt
-         if (pzoptStaged == null) { // pzopt
-            pzoptStaged = (IsoChunk)IsoChunk.loadGridSquare.poll(); // pzopt
-            pzoptStagedFrame = pzopt.SlackWork.frame(); // pzopt
-            pzoptStagedSquares = pzoptSquares(pzoptStaged); // pzopt
-         } // pzopt
-         return pzoptStaged != null && pzopt.ChunkPace.mayTake(IsoChunk.loadGridSquare.size() + 1); // pzopt: chunkHandoffPaceMs in the slack too
+   private static final pzopt.SlackWork.Producer PZOPT_HANDOFF = new pzopt.ChunkHandoffProducer(); // pzopt: signer-safe callback, unchanged queue and cost state
+   public static boolean pzoptHandoffPending() { // pzopt: existing callback body, called by the mod-owned producer
+      if (pzoptStaged == null) { // pzopt
+         pzoptStaged = (IsoChunk)IsoChunk.loadGridSquare.poll(); // pzopt
+         pzoptStagedFrame = pzopt.SlackWork.frame(); // pzopt
+         pzoptStagedSquares = pzoptSquares(pzoptStaged); // pzopt
       } // pzopt
-      public long nextCostNs() { // pzopt
-         if (pzopt.Config.CHUNK_HANDOFF_COST_CHUNK && pzopt.GtAb.on(pzopt.GtAb.HANDOFF_SCHED)) { // pzopt: chunkHandoffCost=chunk (f8-handoff), the running mean of a whole hand-off
-            return PZOPT_CHUNK_COST.estimate(); // pzopt
-         } // pzopt
-         return PZOPT_LEVEL_COST.estimate() * pzoptStagedSquares; // pzopt
+      return pzoptStaged != null && pzopt.ChunkPace.mayTake(IsoChunk.loadGridSquare.size() + 1); // pzopt: chunkHandoffPaceMs in the slack too
+   } // pzopt
+   public static long pzoptHandoffNextCostNs() { // pzopt: existing callback body
+      if (pzopt.Config.CHUNK_HANDOFF_COST_CHUNK && pzopt.GtAb.on(pzopt.GtAb.HANDOFF_SCHED)) { // pzopt: chunkHandoffCost=chunk (f8-handoff), the running mean of a whole hand-off
+         return PZOPT_CHUNK_COST.estimate(); // pzopt
       } // pzopt
-      public boolean forceAnyFrame() { // pzopt: chunkHandoffSlackMaxWait with chunkHandoffForceAnyFrame (f8-handoff): an overdue chunk joins in the next slack, light or not
-         return pzopt.Config.CHUNK_HANDOFF_FORCE_ANY_FRAME && pzopt.GtAb.on(pzopt.GtAb.HANDOFF_SCHED); // pzopt
+      return PZOPT_LEVEL_COST.estimate() * pzoptStagedSquares; // pzopt
+   } // pzopt
+   public static boolean pzoptHandoffForceAnyFrame() { // pzopt: existing force policy
+      return pzopt.Config.CHUNK_HANDOFF_FORCE_ANY_FRAME && pzopt.GtAb.on(pzopt.GtAb.HANDOFF_SCHED); // pzopt
+   } // pzopt
+   public static int pzoptHandoffNextAgeFrames() { // pzopt: existing callback body
+      return pzopt.SlackWork.frame() - pzoptStagedFrame; // pzopt
+   } // pzopt
+   public static int pzoptHandoffMaxWaitFrames() { // pzopt: existing maximum-wait policy
+      return pzopt.Config.CHUNK_HANDOFF_SLACK_MAX_WAIT > 0 && pzopt.GtAb.on(pzopt.GtAb.HANDOFF_SCHED) ? pzopt.Config.CHUNK_HANDOFF_SLACK_MAX_WAIT : pzopt.Config.SLACK_MAX_WAIT_FRAMES; // pzopt
+   } // pzopt
+   public static void pzoptHandoffRunNext() { // pzopt: existing callback body
+      IsoChunk chunk = pzoptStaged; // pzopt
+      int squares = pzoptStagedSquares; // pzopt
+      pzoptStaged = null; // pzopt
+      IsoChunkMap cm = IsoWorld.instance.currentCell.chunkMap[0]; // pzopt
+      long t0 = System.nanoTime(); // pzopt
+      pzopt.ChunkHandoff.inSlack = true; // pzopt: census
+      boolean pzoptJoined; // pzopt
+      try { // pzopt
+         pzoptJoined = cm.pzoptHandOffChunk(chunk); // pzopt
+      } finally { // pzopt
+         pzopt.ChunkHandoff.inSlack = false; // pzopt
       } // pzopt
-      public int nextAgeFrames() { // pzopt
-         return pzopt.SlackWork.frame() - pzoptStagedFrame; // pzopt
-      } // pzopt
-      public int maxWaitFrames() { // pzopt: chunkHandoffSlackMaxWait (f8-handoff), a staged chunk that does not fit the slack joins after this many frames (0 = slackMaxWaitFrames)
-         return pzopt.Config.CHUNK_HANDOFF_SLACK_MAX_WAIT > 0 && pzopt.GtAb.on(pzopt.GtAb.HANDOFF_SCHED) ? pzopt.Config.CHUNK_HANDOFF_SLACK_MAX_WAIT : pzopt.Config.SLACK_MAX_WAIT_FRAMES; // pzopt
-      } // pzopt
-      public void runNext() { // pzopt
-         IsoChunk chunk = pzoptStaged; // pzopt
-         int squares = pzoptStagedSquares; // pzopt
-         pzoptStaged = null; // pzopt
-         IsoChunkMap cm = IsoWorld.instance.currentCell.chunkMap[0]; // pzopt
-         long t0 = System.nanoTime(); // pzopt
-         pzopt.ChunkHandoff.inSlack = true; // pzopt: census
-         boolean pzoptJoined; // pzopt
-         try { // pzopt
-            pzoptJoined = cm.pzoptHandOffChunk(chunk); // pzopt
-         } finally { // pzopt
-            pzopt.ChunkHandoff.inSlack = false; // pzopt
-         } // pzopt
-         if (pzoptJoined) { // pzopt
-            for (int n = 0; n < IsoPlayer.numPlayers; n++) { // pzopt: the loop's calculateZExtentsForChunkMap, for each player's map
-               IsoChunkMap m = IsoWorld.instance.currentCell.chunkMap[n]; // pzopt
-               if (m != null && !m.ignore) { // pzopt
-                  m.calculateZExtentsForChunkMap(); // pzopt
-               } // pzopt
+      if (pzoptJoined) { // pzopt
+         for (int n = 0; n < IsoPlayer.numPlayers; n++) { // pzopt: the loop's calculateZExtentsForChunkMap, for each player's map
+            IsoChunkMap m = IsoWorld.instance.currentCell.chunkMap[n]; // pzopt
+            if (m != null && !m.ignore) { // pzopt
+               m.calculateZExtentsForChunkMap(); // pzopt
             } // pzopt
          } // pzopt
-         long pzoptNs = System.nanoTime() - t0; // pzopt
-         PZOPT_LEVEL_COST.learn(pzoptNs / squares); // pzopt
-         PZOPT_CHUNK_COST.learn(pzoptNs); // pzopt: chunkHandoffCost=chunk
-         pzopt.ChunkPace.took(); // pzopt: chunkHandoffPaceMs
       } // pzopt
-   }; // pzopt
-
+      long pzoptNs = System.nanoTime() - t0; // pzopt
+      PZOPT_LEVEL_COST.learn(pzoptNs / squares); // pzopt
+      PZOPT_CHUNK_COST.learn(pzoptNs); // pzopt: chunkHandoffCost=chunk
+      pzopt.ChunkPace.took(); // pzopt: chunkHandoffPaceMs
+   } // pzopt
    private static int pzoptSquares(IsoChunk c) { // pzopt: the chunk's squares, its hand-off's size
       if (c == null || c.squares == null) { // pzopt
          return 64; // pzopt
